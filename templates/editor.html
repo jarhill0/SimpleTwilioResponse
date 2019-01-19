@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Response Editor</title>
+</head>
+<body>
+
+<h1>Response Editor</h1>
+
+Enter your new message below, along with the password. Click Submit when done.
+
+<br>
+
+<form action="" method="post">
+    <div>
+        <label for="message">New message</label>
+        <textarea id="message" name="mess" required rows="5" cols="33">{{ message }}</textarea>
+    </div>
+    <br>
+    <div>
+        <label for="password">Password</label>
+        <input id="password" name="pw" required type="password">
+    </div>
+    <button>Submit</button>
+</form>
+
+{% if saved %}
+
+    <br>
+    <strong>The message has been updated.</strong>
+
+{% endif %}
+
+{% if not valid_pass %}
+
+    <p style="color:red;"><strong>Incorrect password.</strong></p>
+
+{% endif %}
+
+</body>
+</html>
