@@ -101,7 +101,8 @@ def edit_message():
                 success = 'The new text message has been set.'
         else:
             error = 'Invalid password.'
-    return render_template('editor.html', message=RESPONSE.text, success=success, error=error)
+    return render_template('editor.html', message=RESPONSE.text, checked=not RESPONSE.use_text,
+                           success=success, error=error)
 
 
 if __name__ == "__main__":
