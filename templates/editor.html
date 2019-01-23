@@ -12,11 +12,21 @@ Enter your new message below, along with the password. Click Submit when done.
 
 <br><br>
 
-<form action="" method="post">
+<form action="" method="post" enctype="multipart/form-data">
     <div>
         <label for="message">Message</label>
         <br>
         <textarea id="message" name="mess" required rows="5" cols="33">{{ message }}</textarea>
+    </div>
+    <br>
+    <div>
+        <input type="checkbox" id="audio-checkbox" name="use-audio">
+        <label for="audio-checkbox">use audio file</label>
+    </div>
+    <br>
+    <div>
+        <label for="audio-upload">Audio file</label>
+        <input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file">
     </div>
     <br>
     <div>
@@ -26,16 +36,16 @@ Enter your new message below, along with the password. Click Submit when done.
     <button>Submit</button>
 </form>
 
-{% if saved %}
+{% if success %}
 
     <br>
-    <strong>The message has been updated.</strong>
+    <strong>{{ success }}</strong>
 
 {% endif %}
 
-{% if not valid_pass %}
+{% if error %}
 
-    <p style="color:red;"><strong>Incorrect password.</strong></p>
+    <p style="color:red;"><strong>{{ error }}</strong></p>
 
 {% endif %}
 
