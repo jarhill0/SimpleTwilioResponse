@@ -1,3 +1,5 @@
+from csv import reader
+from datetime import datetime
 from os.path import dirname, join, splitext
 
 from flask import Flask, render_template, request
@@ -6,6 +8,8 @@ from twilio.twiml.voice_response import VoiceResponse
 import config_secrets
 
 app = Flask(__name__)
+
+ANALYTICS_PATH = join(dirname(__file__), 'analytics.csv')
 
 
 class SavedResponse:
@@ -39,9 +43,30 @@ class SavedResponse:
 RESPONSE = SavedResponse()
 
 
+@app.route('/analytics', methods=['GET', 'POST'])
+def analytics():
+    if request.method == 'POST' and request.values.get('pw') == config_secrets.password:
+        with open(ANALYTICS_PATH, newline='') as csvfile:
+            table = reader(csvfile, delimiter=',')
+            return render_template('analytics.html', table=table)
+    return render_template('auth.html')
+
+
+def log_request():
+    if request.method == 'POST':
+        data = [request.values['Caller'].replace(',', ''),  # just in case bad input
+                datetime.now().strftime('%c')]
+        with open(ANALYTICS_PATH, 'a') as f:
+            f.write(','.join(data) + '\n')
+
+
 @app.route('/answer', methods=['GET', 'POST'])
 def voice():
     """Respond to incoming phone calls."""
+    try:
+        log_request()
+    except Exception:
+        pass
     resp = VoiceResponse()
     if RESPONSE.use_text:
         resp.say(RESPONSE.text)

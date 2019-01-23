@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics</title>
+</head>
+<style>
+    table {
+        border-collapse: collapse;
+        border-spacing: 0px;
+    }
+
+    table, th, td {
+        padding: 5px;
+        border: 1px solid black;
+    }
+</style>
+<body>
+
+<a href="{{ url_for('edit_message') }}">Edit message</a>
+
+<h1>Analytics</h1>
+
+<table>
+    {% for row in table %}
+        <tr>
+            {% if loop.first %}
+                {% for data in row %}
+                    <th>{{ data }}</th>
+                {% endfor %}
+            {% else %}
+                {% for data in row %}
+                    <td>{{ data }}</td>
+                {% endfor %}
+            {% endif %}
+        </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
