@@ -17,14 +17,14 @@ class SavedResponse:
     FOLDER = join(dirname(__file__), 'static')
     TEXT_PATH = join(FOLDER, 'response.txt')
     AUDIO_PATH = join(FOLDER, 'audio.mp3')
+    TYPE_PATH = join(FOLDER, 'type.txt')
 
     @staticmethod
     def audio_url():
         return '/static/audio.mp3'
 
     def __init__(self):
-        self._text = self._audio = None
-        self.use_text = True
+        self._text = self._audio = self._use_text = None
 
     @property
     def text(self):
@@ -38,6 +38,22 @@ class SavedResponse:
         with open(self.TEXT_PATH, 'w') as f:
             f.write(value)
         self._text = value
+
+    @property
+    def use_text(self):
+        if self._use_text is None:
+            try:
+                with open(self.TYPE_PATH) as f:
+                    self._use_text = f.read().lower().strip() == 'text'
+            except IOError:
+                self._use_text = True
+        return self._use_text
+
+    @use_text.setter
+    def use_text(self, value):
+        with open(self.TYPE_PATH, 'w') as f:
+            f.write('text' if value else 'audio')
+        self._use_text = value
 
 
 RESPONSE = SavedResponse()
