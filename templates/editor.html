@@ -9,11 +9,11 @@
 
 <body>
 
-<a href="{{ url_for('analytics') }}">Analytics</a>
+{% include 'header.html' %}
 
 <h1>Response Editor</h1>
 
-Enter your new message below, along with the password. Click Submit when done.
+Enter your new message below. Click Submit when done.
 
 <br><br>
 
@@ -33,26 +33,10 @@ Enter your new message below, along with the password. Click Submit when done.
         <label for="audio-upload">Audio file</label>
         <input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file">
     </div>
-    <br>
-    <div>
-        <label for="password">Password</label>
-        <input id="password" name="pw" required type="password">
-    </div>
     <button>Submit</button>
 </form>
 
-{% if success %}
-
-    <br>
-    <strong>{{ success }}</strong>
-
-{% endif %}
-
-{% if error %}
-
-    <p style="color:red;"><strong>{{ error }}</strong></p>
-
-{% endif %}
+{% include 'success_error.html' %}
 
 </body>
 </html>

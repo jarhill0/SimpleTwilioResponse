@@ -9,14 +9,24 @@
 
 <body>
 
-You need to authenticate to view this page.
+<h1>Log in</h1>
+
+<p>You need to authenticate to view this page.</p>
 
 <form action="" method="post">
-    <div>
-        <label for="password">Password</label>
-        <input id="password" name="pw" required type="password">
-    </div>
-    <button>Go</button>
+    <table>
+        <tr>
+            <td><label for="password">Password</label></td>
+            <td><input id="password" name="pw" required type="password"></td>
+        </tr>
+        <td></td>
+        <td>
+            <button>Go</button>
+        </td>
+    </table>
 </form>
+
+{% include 'success_error.html' %}
+
 </body>
 </html>
