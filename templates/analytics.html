@@ -42,5 +42,33 @@
     {% endfor %}
 </table>
 
+
+<h3>Ignore number</h3>
+
+<p>Need to exclude a number from analytics? Enter it here in the format <code>+13105556789</code>.</p>
+
+<form action="" method="post">
+    <p>
+        <label for="number">Phone number</label>
+        <input id="number" name="num" required type="text" placeholder="+13105556789">
+    </p>
+
+    <p>
+        <label for="password">Password</label>
+        <input id="number" name="pw" required type="password">
+    </p>
+    <button>Go</button>
+</form>
+
+<h3>Ignored numbers</h3>
+
+<p>These numbers are ignored:
+<ul>
+    {% for number in ignored %}
+        <li>{{ number }}</li>
+    {% endfor %}
+</ul>
+</p>
+
 </body>
 </html>

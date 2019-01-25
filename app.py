@@ -56,15 +56,40 @@ class SavedResponse:
         self._use_text = value
 
 
+class IgnoredUsers:
+    IGNORED_PATH = join(dirname(__file__), 'ignored.csv')
+
+    def __init__(self):
+        self._ignored = None
+
+    @property
+    def ignored(self):
+        if self._ignored is None:
+            with open(self.IGNORED_PATH, newline='') as f:
+                self._ignored = set(str(line[0]) for line in reader(f, delimiter=','))
+        return self._ignored
+
+    def add(self, number):
+        number = str(number)
+        if number not in self._ignored:
+            with open(self.IGNORED_PATH, 'a') as f:
+                f.write(number + '\n')
+        self._ignored.add(number)
+
+
 RESPONSE = SavedResponse()
+IGNORED = IgnoredUsers()
 
 
 @app.route('/analytics', methods=['GET', 'POST'])
 def analytics():
     if request.method == 'POST' and request.values.get('pw') == config_secrets.password:
+        if 'num' in request.values:  # adding an ignored number:
+            IGNORED.add(request.values['num'])
         with open(ANALYTICS_PATH, newline='') as csvfile:
-            table = list(tuple(row) for row in reader(csvfile, delimiter=','))
-        return render_template('analytics.html', table=table, uniques=len(set(row[0] for row in table)) - 1)
+            table = list(tuple(row) for row in reader(csvfile, delimiter=',') if str(row[0]) not in IGNORED.ignored)
+        return render_template('analytics.html', table=table, uniques=len(set(row[0] for row in table)) - 1,
+                               ignored=IGNORED.ignored)
     return render_template('auth.html')
 
 
