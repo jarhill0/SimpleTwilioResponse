@@ -63,8 +63,8 @@ RESPONSE = SavedResponse()
 def analytics():
     if request.method == 'POST' and request.values.get('pw') == config_secrets.password:
         with open(ANALYTICS_PATH, newline='') as csvfile:
-            table = reader(csvfile, delimiter=',')
-            return render_template('analytics.html', table=table)
+            table = list(tuple(row) for row in reader(csvfile, delimiter=','))
+        return render_template('analytics.html', table=table, uniques=len(set(row[0] for row in table)) - 1)
     return render_template('auth.html')
 
 
