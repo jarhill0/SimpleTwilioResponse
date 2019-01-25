@@ -84,8 +84,8 @@ class Cookies(Storage):
     def check(self, cookie):
         """Check if a cookie is valid."""
         cursor = self.connection().cursor()
-        row = cursor.execute('SELECT expiration FROM {} WHERE cookie=?'.format(self.TABLE_NAME), (cookie,)).fetchone()
-        return row and datetime.now() < datetime.fromtimestamp(row[0])
+        return cursor.execute('SELECT * FROM {} WHERE cookie=? AND expiration>?'.format(self.TABLE_NAME),
+                              (cookie, int(datetime.now().timestamp()))).fetchone() is not None
 
     def new(self):
         """Store a new cookie and return it."""
