@@ -60,15 +60,18 @@
     <button>Go</button>
 </form>
 
-<h3>Ignored numbers</h3>
 
-<p>These numbers are ignored:
-<ul>
-    {% for number in ignored %}
-        <li>{{ number }}</li>
-    {% endfor %}
-</ul>
-</p>
+{% if ignored %}
+    <h3>Ignored numbers</h3>
+
+    <p>These numbers are ignored:
+    <ul>
+        {% for number in ignored %}
+            <li>{{ number }}</li>
+        {% endfor %}
+    </ul>
+    </p>
+{% endif %}
 
 </body>
 </html>
