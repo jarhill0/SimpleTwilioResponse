@@ -1,11 +1,11 @@
 from datetime import datetime
 from functools import wraps
-from os.path import dirname, join, splitext
+from os.path import splitext
 
-from flask import Flask, make_response, redirect, render_template, request, url_for
-from twilio.twiml.voice_response import VoiceResponse
+from flask import Flask, Response, make_response, redirect, render_template, request, url_for
+from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from storage import CallLog, Cookies, Ignored, Secrets
+from storage import CallLog, CodedMessages, Cookies, Ignored, Secrets
 
 app = Flask(__name__)
 
@@ -13,36 +13,7 @@ SECRETS = Secrets()
 IGNORED = Ignored()
 CALL_LOG = CallLog()
 COOKIES = Cookies()
-
-
-class SavedResponse:
-    """Keeps a response in sync with disk, lazily loaded."""
-    AUDIO_PATH = join(dirname(__file__), 'static', 'audio.mp3')
-    _RESPONSE_TYPE_NAME = 'response_type'
-    _TEXT_NAME = 'text'
-
-    @staticmethod
-    def audio_url():
-        return '/static/audio.mp3'
-
-    @property
-    def text(self):
-        return SECRETS.get(self._TEXT_NAME, '')
-
-    @text.setter
-    def text(self, value):
-        SECRETS[self._TEXT_NAME] = value
-
-    @property
-    def use_text(self):
-        return SECRETS.get(self._RESPONSE_TYPE_NAME, 'text') == 'text'
-
-    @use_text.setter
-    def use_text(self, value):
-        SECRETS[self._RESPONSE_TYPE_NAME] = 'text' if value else 'audio'
-
-
-RESPONSE = SavedResponse()
+CODED = CodedMessages()
 
 
 def authenticated(route):
@@ -83,22 +54,50 @@ def analytics():
 
 
 def log_request():
-    if request.method == 'POST':
-        CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'))
+    if request.method == 'POST' and {'Caller', 'CallSid'}.issubset(request.values):
+        CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'), request.values['CallSid'])
+
+
+def log_digits():
+    if request.method == 'POST' and {'Digits', 'CallSid'}.issubset(request.values):
+        CALL_LOG.set_code(request.values['CallSid'], request.values['Digits'])
 
 
 @app.route('/answer', methods=['GET', 'POST'])
 def voice():
     """Respond to incoming phone calls."""
-    try:
-        log_request()
-    except KeyError:
-        pass
+    log_request()
+
     resp = VoiceResponse()
-    if RESPONSE.use_text:
-        resp.say(RESPONSE.text)
+    gather = Gather(action=url_for('answer_digits'))
+    gather.say('Enter a 3-digit code, if you have one. Then press pound. '
+               'Or, press pound to continue without entering a code.')
+    resp.append(gather)
+    resp.redirect(url_for('answer_digits'))
+    return str(resp)
+
+
+@app.route('/answer/audio.mp3', methods=['GET', 'POST'])
+def answer_audio():
+    digits = request.values.get('code', '')
+    audio = CODED.get_response_audio(digits)
+    if not isinstance(audio, bytes):
+        return ''
+    return Response(audio, mimetype='audio/mpeg')
+
+
+@app.route('/answer/digits', methods=['GET', 'POST'])
+def answer_digits():
+    """Respond to a call with a special message."""
+    log_digits()
+    resp = VoiceResponse()
+
+    digits = request.values.get('Digits', '')
+    message_is_text = CODED.get_response_type(digits)
+    if message_is_text:
+        resp.say(CODED.get_response_text(digits))
     else:
-        resp.play(url=RESPONSE.audio_url())
+        resp.play(url_for('answer_audio', code=digits))
     return str(resp)
 
 
@@ -118,15 +117,23 @@ def edit_message():
                 elif not splitext(file.filename)[1].lower() == '.mp3':
                     error = 'Invalid file type. Only MP3 is supported.'
                 else:
-                    file.save(RESPONSE.AUDIO_PATH)
+                    contents = file.read()
+                    CODED.set_audio(request.values.get('code', ''), contents, file.filename)
+                    file.close()
                     success = 'The new audio message has been set.'
-                    RESPONSE.use_text = False
         else:
-            RESPONSE.text = request.values['mess']
-            RESPONSE.use_text = True
+            CODED.set_text(request.values.get('code', ''), request.values['mess'])
             success = 'The new text message has been set.'
-    return render_template('editor.html', message=RESPONSE.text, checked=not RESPONSE.use_text,
-                           success=success, error=error)
+    return render_template('editor.html', coded_messages=CODED, success=success, error=error)
+
+
+@app.route('/delete_code_response')
+@authenticated
+def delete_code_response():
+    code = request.values.get('code')
+    if code:
+        CODED.delete_reponse(code)
+    return redirect(url_for('edit_message'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
