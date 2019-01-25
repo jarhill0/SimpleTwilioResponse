@@ -32,12 +32,13 @@ class Storage:
 
     def _iterate_column(self, column_name):
         cursor = self.connection().cursor()
-        return (row[0] for row in cursor.execute('SELECT {col} from {tab}'.format(col=column_name,
-                                                                                  tab=self.TABLE_NAME)))
+        return (row[0] for row in cursor.execute('SELECT {col} from {tab} ORDER BY {col} ASC'.format(col=column_name,
+                                                                                                     tab=self.TABLE_NAME)))
 
-    def _iterate_columns(self, *columns):
+    def _iterate_columns(self, *columns, order_by=''):
         cursor = self.connection().cursor()
-        return cursor.execute('SELECT {cols} from {tab}'.format(cols=', '.join(columns), tab=self.TABLE_NAME))
+        return cursor.execute('SELECT {cols} from {tab} {order}'.format(cols=', '.join(columns), tab=self.TABLE_NAME,
+                                                                        order=order_by))
 
     def _remove(self, column_name, value):
         conn = self.connection()
@@ -55,15 +56,17 @@ class Storage:
 
 class CallLog(Storage):
     TABLE_NAME = 'calls'
-    TABLE_SCHEMA = 'id INTEGER PRIMARY KEY NOT NULL, number TEXT NOT NULL, timestamp DATETIME NOT NULL'
+    TABLE_SCHEMA = ('id INTEGER PRIMARY KEY NOT NULL, number TEXT NOT NULL, timestamp DATETIME NOT NULL, '
+                    'call_sid TEXT, code TEXT')
 
     def __iter__(self):
-        return self._iterate_columns('number', 'timestamp')
+        return self._iterate_columns('number', 'timestamp', 'code', order_by='ORDER BY timestamp ASC')
 
-    def add(self, number, time):
+    def add(self, number, time, call_sid):
         conn = self.connection()
-        conn.cursor().execute('INSERT OR IGNORE INTO {} VALUES (NULL, ?, ?)'.format(self.TABLE_NAME),
-                              (number, time))
+        conn.cursor().execute('INSERT INTO {} (number, timestamp, call_sid) VALUES (?, ?, ?)'.format(
+            self.TABLE_NAME),
+            (number, time, call_sid))
         conn.commit()
 
     def filter_ignored(self):
@@ -72,9 +75,95 @@ class CallLog(Storage):
         Brittle, hardcoded method.
         """
         cursor = self.connection().cursor()
-        return cursor.execute('SELECT number, timestamp FROM {tab} '.format(tab=self.TABLE_NAME) +
+        return cursor.execute('SELECT number, timestamp, code FROM {tab} '.format(tab=self.TABLE_NAME) +
                               'WHERE number not in (SELECT number FROM {ig_tab})'.format(
                                   ig_tab=Ignored.TABLE_NAME)).fetchall()
+
+    def set_code(self, call_sid, code):
+        conn = self.connection()
+        conn.cursor().execute('UPDATE {} SET code=? WHERE call_sid=?'.format(self.TABLE_NAME), (code, call_sid))
+        conn.commit()
+
+
+class CodedMessages(Storage):
+    TABLE_NAME = 'coded_messages'
+    TABLE_SCHEMA = ('id INTEGER PRIMARY KEY NOT NULL, code TEXT NOT NULL UNIQUE, '
+                    'use_text TINYINT NOT NULL, text_ TEXT, audio BLOB, file_name TEXT')
+
+    def codes(self):
+        return self._iterate_column('code')
+
+    def delete_reponse(self, code):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM {} WHERE code=?'.format(self.TABLE_NAME), (code,))
+        conn.commit()
+
+    def get_response_audio(self, code):
+        """Returns response audio."""
+        cursor = self.connection().cursor()
+        row = cursor.execute('SELECT audio FROM {} WHERE code=?'.format(self.TABLE_NAME), (str(code),)).fetchone()
+
+        if not row:
+            if code:  # unknown code; revert to default
+                return self.get_response_audio('')
+            else:  # no default case! This should never happen, but just in case...
+                return None
+
+        return row[0]
+
+    def get_response_file_name(self, code):
+        """Returns response file name."""
+        cursor = self.connection().cursor()
+        row = cursor.execute('SELECT file_name FROM {} WHERE code=?'.format(self.TABLE_NAME), (str(code),)).fetchone()
+
+        if not row:
+            if code:  # unknown code; revert to default
+                return self.get_response_file_name('')
+            else:  # no default case! This should never happen, but just in case...
+                return ''
+
+        return row[0]
+
+    def get_response_text(self, code):
+        """Returns response text."""
+        cursor = self.connection().cursor()
+        row = cursor.execute('SELECT text_ FROM {} WHERE code=?'.format(self.TABLE_NAME), (str(code),)).fetchone()
+
+        if not row:
+            if code:  # unknown code; revert to default
+                return self.get_response_text('')
+            else:  # no default case!
+                return ''
+
+        return row[0]
+
+    def get_response_type(self, code):
+        """Returns True if the response type is text."""
+        cursor = self.connection().cursor()
+        row = cursor.execute('SELECT use_text FROM {} WHERE code=?'.format(self.TABLE_NAME), (str(code),)).fetchone()
+
+        if not row:
+            if code:  # unknown code; revert to default
+                return self.get_response_type('')
+            else:  # no default case!
+                return True
+
+        return bool(row[0])
+
+    def set_audio(self, code, audio, file_name):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('REPLACE INTO {} (code, use_text, audio, file_name) VALUES (?, 0, ?, ?)'.format(self.TABLE_NAME),
+                       (code, audio, file_name))
+        conn.commit()
+
+    def set_text(self, code, text):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('REPLACE INTO {} (code, use_text, text_) VALUES (?, 1, ?)'.format(self.TABLE_NAME),
+                       (code, text))
+        conn.commit()
 
 
 class Cookies(Storage):

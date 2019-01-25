@@ -3,40 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <title>Response Editor</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            border-spacing: 0px;
+        }
+
+        table, th, td {
+            padding: 5px;
+        }
+    </style>
 </head>
 
 <link rel="stylesheet" href="/static/hacker.css">
-
-<body>
 
 {% include 'header.html' %}
 
 <h1>Response Editor</h1>
 
-Enter your new message below. Click Submit when done.
+<p>Enter your new message below. Click Submit when done.</p>
+<p>To edit a code-specific message, enter a code in the box for codes.
+    If no code is entered, you will modify the default message.</p>
 
-<br><br>
 
 <form action="" method="post" enctype="multipart/form-data">
-    <div>
-        <label for="message">Message</label>
-        <br>
-        <textarea id="message" name="mess" required rows="5" cols="33">{{ message }}</textarea>
-    </div>
-    <br>
-    <div>
-        <input type="checkbox" id="audio-checkbox" name="use-audio" {% if checked %}checked{% endif %}>
-        <label for="audio-checkbox">use audio file</label>
-    </div>
-    <br>
-    <div>
-        <label for="audio-upload">Audio file</label>
-        <input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file">
-    </div>
-    <button>Submit</button>
+    <table>
+        <tr>
+            <td><label for="code">Code:</label></td>
+            <td><input type="text" id="code" name="code" placeholder="123"></td>
+        </tr>
+        <tr>
+            <td>
+                <label for="message">Message:</label></td>
+            <td>
+                <textarea id="message" name="mess" rows="5" cols="33"></textarea>
+            </td>
+        </tr>
+        <tr>
+            <td><label for="audio-checkbox">Use audio file:</label></td>
+            <td><input type="checkbox" id="audio-checkbox" name="use-audio"></td>
+        </tr>
+        <tr>
+            <td><label for="audio-upload">Audio file:</label></td>
+            <td><input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file"></td>
+        </tr>
+        <tr>
+            <td>
+                <button>Submit</button>
+            </td>
+        </tr>
+    </table>
 </form>
 
 {% include 'success_error.html' %}
+
+<h2>Active responses</h2>
+
+<ul>
+    {% for code in coded_messages.codes() %}
+        <li>
+            {% if code %}
+                <b>{{ code }}</b> (<a href="{{ url_for('delete_code_response', code=code) }}">delete</a>):
+            {% else %}
+                <i>default</i>:
+            {% endif %}
+            {% if not coded_messages.get_response_type(code) %}
+                Audio
+                <br>
+                {{ coded_messages.get_response_file_name(code) }}
+            {% else %}
+                Text
+                <br>
+                <pre>{{ coded_messages.get_response_text(code) }}</pre>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
+
 
 </body>
 </html>
