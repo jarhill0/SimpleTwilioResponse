@@ -1,104 +1,90 @@
-from csv import reader
 from datetime import datetime
+from functools import wraps
 from os.path import dirname, join, splitext
 
-from flask import Flask, render_template, request
+from flask import Flask, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import VoiceResponse
 
-import config_secrets
+from storage import CallLog, Cookies, Ignored, Secrets
 
 app = Flask(__name__)
 
-ANALYTICS_PATH = join(dirname(__file__), 'analytics.csv')
+SECRETS = Secrets()
+IGNORED = Ignored()
+CALL_LOG = CallLog()
+COOKIES = Cookies()
 
 
 class SavedResponse:
     """Keeps a response in sync with disk, lazily loaded."""
-    FOLDER = join(dirname(__file__), 'static')
-    TEXT_PATH = join(FOLDER, 'response.txt')
-    AUDIO_PATH = join(FOLDER, 'audio.mp3')
-    TYPE_PATH = join(FOLDER, 'type.txt')
+    AUDIO_PATH = join(dirname(__file__), 'static', 'audio.mp3')
+    _RESPONSE_TYPE_NAME = 'response_type'
+    _TEXT_NAME = 'text'
 
     @staticmethod
     def audio_url():
         return '/static/audio.mp3'
 
-    def __init__(self):
-        self._text = self._audio = self._use_text = None
-
     @property
     def text(self):
-        if self._text is None:
-            with open(self.TEXT_PATH) as f:
-                self._text = f.read()
-        return self._text
+        return SECRETS.get(self._TEXT_NAME, '')
 
     @text.setter
     def text(self, value):
-        with open(self.TEXT_PATH, 'w') as f:
-            f.write(value)
-        self._text = value
+        SECRETS[self._TEXT_NAME] = value
 
     @property
     def use_text(self):
-        if self._use_text is None:
-            try:
-                with open(self.TYPE_PATH) as f:
-                    self._use_text = f.read().lower().strip() == 'text'
-            except IOError:
-                self._use_text = True
-        return self._use_text
+        return SECRETS.get(self._RESPONSE_TYPE_NAME, 'text') == 'text'
 
     @use_text.setter
     def use_text(self, value):
-        with open(self.TYPE_PATH, 'w') as f:
-            f.write('text' if value else 'audio')
-        self._use_text = value
-
-
-class IgnoredUsers:
-    IGNORED_PATH = join(dirname(__file__), 'ignored.csv')
-
-    def __init__(self):
-        self._ignored = None
-
-    @property
-    def ignored(self):
-        if self._ignored is None:
-            with open(self.IGNORED_PATH, newline='') as f:
-                self._ignored = set(str(line[0]) for line in reader(f, delimiter=','))
-        return self._ignored
-
-    def add(self, number):
-        number = str(number)
-        if number not in self._ignored:
-            with open(self.IGNORED_PATH, 'a') as f:
-                f.write(number + '\n')
-        self._ignored.add(number)
+        SECRETS[self._RESPONSE_TYPE_NAME] = 'text' if value else 'audio'
 
 
 RESPONSE = SavedResponse()
-IGNORED = IgnoredUsers()
+
+
+def authenticated(route):
+    """Wrap a function that needs to be authenticated."""
+
+    @wraps(route)
+    def auth_wrapper(*args, **kwargs):
+        if 'auth' in request.cookies and COOKIES.check(request.cookies['auth']):
+            return route(*args, **kwargs)
+        return redirect(url_for('log_in', dest=request.path))
+
+    return auth_wrapper
 
 
 @app.route('/analytics', methods=['GET', 'POST'])
+@authenticated
 def analytics():
-    if request.method == 'POST' and request.values.get('pw') == config_secrets.password:
-        if 'num' in request.values:  # adding an ignored number:
-            IGNORED.add(request.values['num'])
-        with open(ANALYTICS_PATH, newline='') as csvfile:
-            table = list(tuple(row) for row in reader(csvfile, delimiter=',') if str(row[0]) not in IGNORED.ignored)
-        return render_template('analytics.html', table=table, uniques=len(set(row[0] for row in table)) - 1,
-                               ignored=IGNORED.ignored)
-    return render_template('auth.html')
+    error = ''
+    success = ''
+    if request.method == 'POST':
+        if 'num' in request.values:  # adding/removing an ignored number:
+            number = request.values['num'].strip()
+
+            if not number.startswith('+'):
+                error = 'Error: Number must begin with +'
+
+            elif number not in IGNORED:
+                IGNORED.add(number)
+                success = 'Added {} to ignored numbers.'.format(number)
+            else:
+                IGNORED.remove(number)
+                success = 'Removed {} from ignored numbers.'.format(number)
+
+    table = CALL_LOG.filter_ignored()
+    uniques = len(set(row[0] for row in table))
+    return render_template('analytics.html', table=table, uniques=uniques, ignored=IGNORED, error=error,
+                           success=success)
 
 
 def log_request():
     if request.method == 'POST':
-        data = [request.values['Caller'].replace(',', ''),  # just in case bad input
-                datetime.now().strftime('%c')]
-        with open(ANALYTICS_PATH, 'a') as f:
-            f.write(','.join(data) + '\n')
+        CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'))
 
 
 @app.route('/answer', methods=['GET', 'POST'])
@@ -106,7 +92,7 @@ def voice():
     """Respond to incoming phone calls."""
     try:
         log_request()
-    except Exception:
+    except KeyError:
         pass
     resp = VoiceResponse()
     if RESPONSE.use_text:
@@ -117,33 +103,54 @@ def voice():
 
 
 @app.route('/', methods=['GET', 'POST'])
+@authenticated
 def edit_message():
     error = ''
     success = ''
     if request.method == 'POST':
-        if request.values.get('pw', '') == config_secrets.password and 'mess' in request.values:
-            if request.values.get('use-audio'):
-                if 'audio-file' not in request.files:
-                    error = 'No file provided.'
-                else:
-                    file = request.files['audio-file']
-                    if not file.filename:
-                        error = 'Empty file.'
-                    elif not splitext(file.filename)[1].lower() == '.mp3':
-                        error = 'Invalid file type. Only MP3 is supported.'
-                    else:
-                        file.save(RESPONSE.AUDIO_PATH)
-                        success = 'The new audio message has been set.'
-                        RESPONSE.use_text = False
+        if request.values.get('use-audio'):
+            if 'audio-file' not in request.files:
+                error = 'No file provided.'
             else:
-                new_response = request.values['mess']
-                RESPONSE.text = new_response
-                RESPONSE.use_text = True
-                success = 'The new text message has been set.'
+                file = request.files['audio-file']
+                if not file.filename:
+                    error = 'Empty file.'
+                elif not splitext(file.filename)[1].lower() == '.mp3':
+                    error = 'Invalid file type. Only MP3 is supported.'
+                else:
+                    file.save(RESPONSE.AUDIO_PATH)
+                    success = 'The new audio message has been set.'
+                    RESPONSE.use_text = False
         else:
-            error = 'Invalid password.'
+            RESPONSE.text = request.values['mess']
+            RESPONSE.use_text = True
+            success = 'The new text message has been set.'
     return render_template('editor.html', message=RESPONSE.text, checked=not RESPONSE.use_text,
                            success=success, error=error)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def log_in():
+    if 'auth' in request.cookies and COOKIES.check(request.cookies['auth']):
+        return redirect(request.values.get('dest') or url_for('edit_message'))
+
+    if request.method == 'GET':
+        COOKIES.prune()
+        return render_template('auth.html')
+    elif request.values.get('pw', '') == SECRETS['password']:
+        resp = make_response(redirect(request.values.get('dest') or url_for('edit_message')))
+        resp.set_cookie('auth', COOKIES.new())
+        return resp
+    else:
+        return render_template('auth.html', error='Incorrect password.')
+
+
+@app.route('/logout', methods=['GET'])
+def log_out():
+    cookie = request.cookies.get('auth')
+    if cookie:
+        COOKIES.remove(cookie)
+    return redirect(url_for('log_in'))
 
 
 if __name__ == "__main__":

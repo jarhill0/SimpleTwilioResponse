@@ -20,57 +20,56 @@
 </style>
 <body>
 
-<a href="{{ url_for('edit_message') }}">Edit message</a>
+{% include 'header.html' %}
 
 <h1>Analytics</h1>
 
-<p><b>{{ table|length - 1 }}</b> calls total from <b>{{ uniques }}</b> unique numbers.</p>
+<p><b>{{ table|length }}</b> calls total from <b>{{ uniques }}</b> unique numbers.</p>
 
-<table>
-    {% for row in table %}
+{% if table %}
+    <table>
         <tr>
-            {% if loop.first %}
-                {% for data in row %}
-                    <th>{{ data }}</th>
-                {% endfor %}
-            {% else %}
+            <th>Phone number</th>
+            <th>Time of call</th>
+        </tr>
+        {% for row in table %}
+            <tr>
                 {% for data in row %}
                     <td>{{ data }}</td>
                 {% endfor %}
-            {% endif %}
-        </tr>
-    {% endfor %}
-</table>
+            </tr>
+        {% endfor %}
+    </table>
+{% endif %}
 
 
-<h3>Ignore number</h3>
+<h3>Ignore/unignore number</h3>
 
-<p>Need to exclude a number from analytics? Enter it here in the format <code>+13105556789</code>.</p>
+<p>Need to exclude a number from analytics? Enter it here in the format <code>+13105556789</code>.
+    If the number is already ignored, it will be unignored.</p>
 
 <form action="" method="post">
     <p>
         <label for="number">Phone number</label>
         <input id="number" name="num" required type="text" placeholder="+13105556789">
     </p>
-
-    <p>
-        <label for="password">Password</label>
-        <input id="number" name="pw" required type="password">
-    </p>
     <button>Go</button>
 </form>
+
+{% include 'success_error.html' %}
+
 
 
 {% if ignored %}
     <h3>Ignored numbers</h3>
 
-    <p>These numbers are ignored:
+    These numbers are ignored:
     <ul>
         {% for number in ignored %}
             <li>{{ number }}</li>
         {% endfor %}
     </ul>
-    </p>
+
 {% endif %}
 
 </body>
