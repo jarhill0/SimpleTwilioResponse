@@ -117,7 +117,7 @@ def edit_message():
     error = ''
     success = ''
     if request.method == 'POST':
-        if request.values.get('use-audio'):
+        if request.values.get('type') == 'audio':
             if 'audio-file' not in request.files:
                 error = 'No file provided.'
             else:
@@ -131,9 +131,11 @@ def edit_message():
                     CODED.set_audio(request.values.get('code', ''), contents, file.filename)
                     file.close()
                     success = 'The new audio message has been set.'
-        else:
+        elif request.values.get('type') == 'text':
             CODED.set_text(request.values.get('code', ''), request.values['mess'])
             success = 'The new text message has been set.'
+        else:
+            error = 'Unknown response type {!r}.'.format(request.values.get('type'))
     return render_template('editor.html', coded_messages=CODED, success=success, error=error)
 
 

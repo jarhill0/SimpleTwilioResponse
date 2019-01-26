@@ -14,6 +14,18 @@
         }
     </style>
     <link rel="stylesheet" href="/static/hacker.css">
+
+    <!-- Tabbed view functionality adapted from https://stackoverflow.com/a/1029252/8033766 -->
+    <script type="text/javascript">
+
+        function activateTab(pageId) {
+            const pageToActivate = document.getElementById(pageId);
+            const pageToDeactivate = document.getElementById(pageId === 'textRow' ? 'audioRow' : 'textRow');
+            pageToActivate.style.display = '';
+            pageToDeactivate.style.display = 'none';
+        }
+
+    </script>
 </head>
 
 <body>
@@ -34,17 +46,25 @@
             <td><input type="text" id="code" name="code" placeholder="123"></td>
         </tr>
         <tr>
+            <td>Response type:</td>
+            <td>
+                <input type="radio" id="text-radio" name="type" value="text" checked
+                       onclick="javascript:activateTab('textRow')">
+                <label for="text-radio">Text</label>
+
+                <input type="radio" id="audio-radio" name="type" value="audio"
+                       onclick="javascript:activateTab('audioRow')">
+                <label for="audio-radio">Audio</label>
+            </td>
+        </tr>
+        <tr id="textRow">
             <td>
                 <label for="message">Message:</label></td>
             <td>
                 <textarea id="message" name="mess" rows="5" cols="33"></textarea>
             </td>
         </tr>
-        <tr>
-            <td><label for="audio-checkbox">Use audio file:</label></td>
-            <td><input type="checkbox" id="audio-checkbox" name="use-audio"></td>
-        </tr>
-        <tr>
+        <tr id="audioRow" style="display: none;">
             <td><label for="audio-upload">Audio file:</label></td>
             <td><input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file"></td>
         </tr>
@@ -53,6 +73,7 @@
                 <button>Submit</button>
             </td>
         </tr>
+
     </table>
 </form>
 
