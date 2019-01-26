@@ -1,3 +1,4 @@
+from collections import Counter, defaultdict
 from datetime import datetime
 from functools import wraps
 from os.path import splitext
@@ -49,8 +50,17 @@ def analytics():
 
     table = CALL_LOG.filter_ignored()
     uniques = len(set(row[0] for row in table))
+    code_counter = sorted(tuple(Counter(row[2] for row in table if row[2] is not None).items()),
+                          key=lambda tup: (tup[1], tup[0]), reverse=True)
     return render_template('analytics.html', table=table, uniques=uniques, ignored=IGNORED, error=error,
-                           success=success)
+                           success=success, code_counter=code_counter, unique_codes=count_unique_code_usages(table))
+
+
+def count_unique_code_usages(table):
+    temp = defaultdict(set)
+    for number, _, code in table:
+        temp[code].add(number)
+    return {key: len(value) for key, value in temp.items()}
 
 
 def log_request():

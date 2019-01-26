@@ -24,6 +24,24 @@
 
 <h1>Analytics</h1>
 
+
+{% if code_counter %}
+    <table>
+        <tr>
+            <th>Code</th>
+            <th>Uses</th>
+            <th>Unique Users</th>
+        </tr>
+        {% for code, freq in code_counter %}
+            <tr>
+                <td>{{ code }}</td>
+                <td>{{ freq }}</td>
+                <td>{{ unique_codes[code] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endif %}
+
 <p><b>{{ table|length }}</b> calls total from <b>{{ uniques }}</b> unique numbers.</p>
 
 {% if table %}
