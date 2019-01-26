@@ -74,7 +74,7 @@
             {% else %}
                 Text
                 <br>
-                <pre>{{ coded_messages.get_response_text(code) }}</pre>
+                <p style="white-space: pre-wrap;">{{ coded_messages.get_response_text(code) }}</p>
             {% endif %}
         </li>
     {% endfor %}
