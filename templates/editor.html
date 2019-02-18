@@ -83,22 +83,24 @@
 
 <ul>
     {% for code in coded_messages.codes() %}
-        <li>
-            {% if code %}
-                <b>{{ code }}</b> (<a href="{{ url_for('delete_code_response', code=code) }}">delete</a>):
-            {% else %}
-                <i>default</i>:
-            {% endif %}
-            {% if not coded_messages.get_response_type(code) %}
-                Audio
-                <br>
-                {{ coded_messages.get_response_file_name(code) }}
-            {% else %}
-                Text
-                <br>
-                <p style="white-space: pre-wrap;">{{ coded_messages.get_response_text(code) }}</p>
-            {% endif %}
-        </li>
+        {% if code != 'prompt' %} {# HACKY #}
+            <li>
+                {% if code %}
+                    <b>{{ code }}</b> (<a href="{{ url_for('delete_code_response', code=code) }}">delete</a>):
+                {% else %}
+                    <i>default</i>:
+                {% endif %}
+                {% if not coded_messages.get_response_type(code) %}
+                    Audio
+                    <br>
+                    <p>{{ coded_messages.get_response_file_name(code) }}</p>
+                {% else %}
+                    Text
+                    <br>
+                    <p style="white-space: pre-wrap;">{{ coded_messages.get_response_text(code) }}</p>
+                {% endif %}
+            </li>
+        {% endif %}
     {% endfor %}
 </ul>
 

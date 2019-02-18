@@ -79,10 +79,13 @@ def voice():
     log_request()
 
     resp = VoiceResponse()
-    gather = Gather(action=url_for('answer_digits'))
-    gather.say('Enter a 3-digit code, if you have one. Then press pound. '
-               'Or, press pound to continue without entering a code.')
-    resp.append(gather)
+    if 'prompt' in CODED:
+        gather = Gather(action=url_for('answer_digits'))
+        if CODED.get_response_type('prompt'):
+            gather.say(CODED.get_response_text('prompt'))
+        else:
+            gather.play(url_for('answer_audio', code='prompt'))
+        resp.append(gather)
     resp.redirect(url_for('answer_digits'))
     return str(resp)
 
@@ -137,6 +140,37 @@ def edit_message():
         else:
             error = 'Unknown response type {!r}.'.format(request.values.get('type'))
     return render_template('editor.html', coded_messages=CODED, success=success, error=error)
+
+
+@app.route('/prompt', methods=['GET', 'POST'])
+@authenticated
+def edit_prompt():
+    error = ''
+    success = ''
+    if request.method == 'POST':
+        if request.values.get('type') == 'audio':
+            if 'audio-file' not in request.files:
+                error = 'No file provided.'
+            else:
+                file = request.files['audio-file']
+                if not file.filename:
+                    error = 'Empty file.'
+                elif not splitext(file.filename)[1].lower() == '.mp3':
+                    error = 'Invalid file type. Only MP3 is supported.'
+                else:
+                    contents = file.read()
+                    CODED.set_audio('prompt', contents, file.filename)
+                    file.close()
+                    success = 'The new audio prompt has been set.'
+        elif request.values.get('type') == 'text':
+            CODED.set_text('prompt', request.values['mess'])
+            success = 'The new text prompt has been set.'
+        elif request.values.get('type') == 'none':
+            CODED.delete_reponse('prompt')
+            success = 'The prompt has been removed.'
+        else:
+            error = 'Unknown response type {!r}.'.format(request.values.get('type'))
+    return render_template('prompt-editor.html', coded_messages=CODED, success=success, error=error)
 
 
 @app.route('/delete_code_response')

@@ -90,6 +90,9 @@ class CodedMessages(Storage):
     TABLE_SCHEMA = ('id INTEGER PRIMARY KEY NOT NULL, code TEXT NOT NULL UNIQUE, '
                     'use_text TINYINT NOT NULL, text_ TEXT, audio BLOB, file_name TEXT')
 
+    def __contains__(self, item):
+        return self._contains('code', item)
+
     def codes(self):
         return self._iterate_column('code')
 

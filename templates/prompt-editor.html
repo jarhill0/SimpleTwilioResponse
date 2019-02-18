@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prompt Editor</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            border-spacing: 0px;
+        }
+
+        table, th, td {
+            padding: 5px;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/hacker.css">
+
+    <!-- Tabbed view functionality adapted from https://stackoverflow.com/a/1029252/8033766 -->
+    <script type="text/javascript">
+
+        function activateTab(pageId) {
+            if (pageId === false) {
+                document.getElementById('textRow').style.display = 'none';
+                document.getElementById('audioRow').style.display = 'none';
+            } else {
+                const pageToActivate = document.getElementById(pageId);
+                const pageToDeactivate = document.getElementById(pageId === 'textRow' ? 'audioRow' : 'textRow');
+                pageToActivate.style.display = '';
+                pageToDeactivate.style.display = 'none';
+            }
+        }
+
+    </script>
+</head>
+
+<body>
+
+{% include 'header.html' %}
+
+<h1>Prompt Editor</h1>
+
+<p>Enter the prompt message below. Click Submit when done.</p>
+<p>If you select the "None" option, then the caller <i>will not</i> be prompted for a code.</p>
+
+
+<form action="" method="post" enctype="multipart/form-data">
+    <table>
+        <tr>
+            <td>Response type:</td>
+            <td>
+                <input type="radio" id="text-radio" name="type" value="text" checked
+                       onclick="activateTab('textRow')">
+                <label for="text-radio">Text</label>
+
+                <input type="radio" id="audio-radio" name="type" value="audio"
+                       onclick="activateTab('audioRow')">
+                <label for="audio-radio">Audio</label>
+
+                <input type="radio" id="none-radio" name="type" value="none"
+                       onclick="activateTab(false)">
+                <label for="none-radio">None</label>
+            </td>
+        </tr>
+        <tr id="textRow">
+            <td>
+                <label for="message">Message:</label></td>
+            <td>
+                <textarea id="message" name="mess" rows="5" cols="33"></textarea>
+            </td>
+        </tr>
+        <tr id="audioRow" style="display: none;">
+            <td><label for="audio-upload">Audio file:</label></td>
+            <td><input type="file" id="audio-upload" accept="audio/mpeg" name="audio-file"></td>
+        </tr>
+        <tr>
+            <td>
+                <button>Submit</button>
+            </td>
+        </tr>
+
+    </table>
+</form>
+
+{% include 'success_error.html' %}
+
+<h2>Current prompt</h2>
+{% if 'prompt' in coded_messages %}
+    {% if not coded_messages.get_response_type('prompt') %}
+        Audio
+        <br>
+        {{ coded_messages.get_response_file_name('prompt') }}
+    {% else %}
+        Text
+        <br>
+        <p style="white-space: pre-wrap;">{{ coded_messages.get_response_text('prompt') }}</p>
+    {% endif %}
+{% else %}
+    None
+{% endif %}
+
+
+</body>
+</html>
