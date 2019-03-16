@@ -1,0 +1,18 @@
+body, a, input, textarea, button {
+    background-color: #0d0d0d;
+    font-family: 'Courier New', monospace;
+    color: {{ main_color }};
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0px;
+}
+
+table, th, td {
+    padding: 5px;
+}
+
+.bordered {
+    border: 1px solid{{ main_color }};
+}

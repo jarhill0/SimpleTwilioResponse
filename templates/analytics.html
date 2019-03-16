@@ -4,20 +4,7 @@
     <meta charset="UTF-8">
     <title>Analytics</title>
 
-
-    <link rel="stylesheet" href="/static/hacker.css">
-
-    <style>
-        table {
-            border-collapse: collapse;
-            border-spacing: 0px;
-        }
-
-        table, th, td {
-            padding: 5px;
-            border: 1px solid #00ff00;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for("main_theme") }}">
 </head>
 
 <body>
@@ -28,17 +15,17 @@
 
 
 {% if code_counter %}
-    <table>
-        <tr>
-            <th>Code</th>
-            <th>Uses</th>
-            <th>Unique Users</th>
+    <table class="bordered">
+        <tr class="bordered">
+            <th class="bordered">Code</th>
+            <th class="bordered">Uses</th>
+            <th class="bordered">Unique Users</th>
         </tr>
         {% for code, freq in code_counter %}
-            <tr>
-                <td>{{ code }}</td>
-                <td>{{ freq }}</td>
-                <td>{{ unique_codes[code] }}</td>
+            <tr class="bordered">
+                <td class="bordered">{{ code }}</td>
+                <td class="bordered">{{ freq }}</td>
+                <td class="bordered">{{ unique_codes[code] }}</td>
             </tr>
         {% endfor %}
     </table>
@@ -47,16 +34,16 @@
 <p><b>{{ table|length }}</b> calls total from <b>{{ uniques }}</b> unique numbers.</p>
 
 {% if table %}
-    <table>
-        <tr>
-            <th>Phone number</th>
-            <th>Time of call</th>
-            <th>Code entered</th>
+    <table class="bordered">
+        <tr class="bordered">
+            <th class="bordered">Phone number</th>
+            <th class="bordered">Time of call</th>
+            <th class="bordered">Code entered</th>
         </tr>
         {% for row in table %}
-            <tr>
+            <tr class="bordered">
                 {% for data in row %}
-                    <td>{{ data }}</td>
+                    <td class="bordered">{{ data }}</td>
                 {% endfor %}
             </tr>
         {% endfor %}

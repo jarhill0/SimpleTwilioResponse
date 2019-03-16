@@ -169,6 +169,30 @@ class CodedMessages(Storage):
         conn.commit()
 
 
+class Config(Storage):
+    TABLE_NAME = 'config'
+    TABLE_SCHEMA = 'name TEXT PRIMARY KEY NOT NULL, value TEXT'
+
+    def __getitem__(self, item):
+        cursor = self.connection().cursor()
+        result = cursor.execute('SELECT value from {} where name=?'.format(self.TABLE_NAME), (item,)).fetchone()
+        if result is None:
+            raise KeyError('No known secret with name {!r}.'.format(item))
+        return result[0]
+
+    def __setitem__(self, key, value):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('REPLACE INTO {} VALUES (?, ?)'.format(self.TABLE_NAME), (key, value))
+        conn.commit()
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
 class Cookies(Storage):
     TABLE_NAME = 'cookies'
     TABLE_SCHEMA = 'id INTEGER PRIMARY KEY NOT NULL, cookie TEXT NOT NULL, expiration DATETIME NOT NULL'

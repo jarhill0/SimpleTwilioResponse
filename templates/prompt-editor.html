@@ -3,17 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Prompt Editor</title>
-    <style>
-        table {
-            border-collapse: collapse;
-            border-spacing: 0px;
-        }
 
-        table, th, td {
-            padding: 5px;
-        }
-    </style>
-    <link rel="stylesheet" href="/static/hacker.css">
+    <link rel="stylesheet" href="{{ url_for("main_theme") }}">
 
     <!-- Tabbed view functionality adapted from https://stackoverflow.com/a/1029252/8033766 -->
     <script type="text/javascript">

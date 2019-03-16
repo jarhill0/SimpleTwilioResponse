@@ -6,7 +6,7 @@ from os.path import splitext
 from flask import Flask, Response, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from storage import CallLog, CodedMessages, Cookies, Ignored, Secrets
+from storage import CallLog, CodedMessages, Config, Cookies, Ignored, Secrets
 
 app = Flask(__name__)
 
@@ -15,6 +15,7 @@ IGNORED = Ignored()
 CALL_LOG = CallLog()
 COOKIES = Cookies()
 CODED = CodedMessages()
+CONFIG = Config()
 
 
 def authenticated(route):
@@ -204,6 +205,11 @@ def log_out():
     if cookie:
         COOKIES.remove(cookie)
     return redirect(url_for('log_in'))
+
+
+@app.route('/hacker.css', methods=['GET'])
+def main_theme():
+    return Response(render_template('hacker.css', main_color=CONFIG.get('main_color', '#00ff00')), mimetype='text/css')
 
 
 if __name__ == "__main__":
