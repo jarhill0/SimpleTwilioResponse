@@ -3,3 +3,4 @@
 static/audio.mp3
 twilio_data.sqlite
 __pycache__/
+*.pyc
