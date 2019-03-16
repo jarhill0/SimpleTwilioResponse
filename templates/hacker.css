@@ -16,3 +16,31 @@ table, th, td {
 .bordered {
     border: 1px solid{{ main_color }};
 }
+
+
+/* from https://stackoverflow.com/a/23681913/ */
+
+::selection {
+    background-color: {{ main_color }};
+    color: #0d0d0d;
+}
+
+::-moz-selection {
+    background-color: {{ main_color }};
+    color: #0d0d0d;
+}
+
+::-o-selection {
+    background-color: {{ main_color }};
+    color: #0d0d0d;
+}
+
+::-ms-selection {
+    background-color: {{ main_color }};
+    color: #0d0d0d;
+}
+
+::-webkit-selection {
+    background-color: {{ main_color }};
+    color: #0d0d0d;
+}
