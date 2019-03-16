@@ -8,12 +8,20 @@
     <!-- Tabbed view functionality adapted from https://stackoverflow.com/a/1029252/8033766 -->
     <script type="text/javascript">
 
-        function activateTab(pageId) {
-            const pageToActivate = document.getElementById(pageId);
-            const pageToDeactivate = document.getElementById(pageId === 'textRow' ? 'audioRow' : 'textRow');
-            pageToActivate.style.display = '';
-            pageToDeactivate.style.display = 'none';
+        const PAIRS = {"text-radio": "textRow", "audio-radio": "audioRow"};
+
+        function updateTabs() {
+            for (const radio_id in PAIRS) {
+                const radio = document.getElementById(radio_id);
+                const field = document.getElementById(PAIRS[radio_id]);
+                if (radio.checked)
+                    field.style.display = "";
+                else
+                    field.style.display = "none";
+            }
         }
+
+        window.onload = updateTabs;  // sometimes the browser saves state
 
     </script>
 </head>
@@ -39,11 +47,11 @@
             <td>Response type:</td>
             <td>
                 <input type="radio" id="text-radio" name="type" value="text" checked
-                       onclick="javascript:activateTab('textRow')" autocomplete="off">
+                       onclick="updateTabs()">
                 <label for="text-radio">Text</label>
 
                 <input type="radio" id="audio-radio" name="type" value="audio"
-                       onclick="javascript:activateTab('audioRow')" autocomplete="off">
+                       onclick="updateTabs()">
                 <label for="audio-radio">Audio</label>
             </td>
         </tr>
