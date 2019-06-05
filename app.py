@@ -6,7 +6,7 @@ from os.path import splitext
 from flask import Flask, Response, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from storage import CallLog, CodedMessages, Config, Cookies, Ignored, Secrets
+from storage import CallLog, CodedMessages, Config, Cookies, Ignored, OpenHours, Secrets
 
 app = Flask(__name__)
 
@@ -16,6 +16,7 @@ CALL_LOG = CallLog()
 COOKIES = Cookies()
 CODED = CodedMessages()
 CONFIG = Config()
+OPEN_HOURS = OpenHours()
 
 
 def authenticated(route):
@@ -80,15 +81,31 @@ def voice():
     log_request()
 
     resp = VoiceResponse()
-    if 'prompt' in CODED:
-        gather = Gather(action=url_for('answer_digits'))
-        if CODED.get_response_type('prompt'):
-            gather.say(CODED.get_response_text('prompt'))
-        else:
-            gather.play(url_for('answer_audio', code='prompt'))
-        resp.append(gather)
-    resp.redirect(url_for('answer_digits'))
+    if is_open():
+        if 'prompt' in CODED:
+            gather = Gather(action=url_for('answer_digits'))
+            if CODED.get_response_type('prompt'):
+                gather.say(CODED.get_response_text('prompt'))
+            else:
+                gather.play(url_for('answer_audio', code='prompt'))
+            resp.append(gather)
+        resp.redirect(url_for('answer_digits'))
+    else:
+        if 'closed' in CODED:
+            if CODED.get_response_type('closed'):
+                resp.say(CODED.get_response_text('closed'))
+            else:
+                resp.play(url_for('answer_audio'), code='closed')
     return str(resp)
+
+
+def is_open():
+    now = datetime.now()
+    open_, close = OPEN_HOURS.get(now.weekday())
+    if None in (open_, close):
+        return True
+    now_str = now.strftime('%H:%M')
+    return open_ <= now_str < close
 
 
 @app.route('/answer/audio.mp3', methods=['GET', 'POST'])
@@ -181,6 +198,49 @@ def delete_code_response():
     if code:
         CODED.delete_reponse(code)
     return redirect(url_for('edit_message'))
+
+
+@app.route('/open_hours', methods=['GET'])
+@authenticated
+def open_hours():
+    time_table = iter(OPEN_HOURS)
+    if len(OPEN_HOURS) == 0:
+        time_table = (
+            (i, None, None)
+            for i in range(7)
+        )
+    return render_template('open_hours.html', time_table=time_table)
+
+
+@app.route('/open_hours', methods=['POST'])
+@authenticated
+def update_open():
+    if not validate_open():
+        return 'Error! All closings must be later than openings!'
+    opens = {i: request.values['open-{}'.format(i)] for i in range(7)}
+    closes = {i: request.values['close-{}'.format(i)] for i in range(7)}
+    OPEN_HOURS.set(opens, closes)
+    return redirect(url_for('open_hours'))
+
+
+def validate_open():
+    for i in range(7):
+        open_ = request.values.get('open-{}'.format(i))
+        close = request.values.get('close-{}'.format(i))
+        if not (open_ and close):
+            return False
+        if not (validate_time(open_) and validate_time(close)):
+            return False
+        if not close >= open_:  # string comparison is sufficient
+            return False
+    return True
+
+
+def validate_time(t):
+    return (len(t) == 5 and
+            t[2] == ':' and
+            t[:2].isnumeric() and
+            t[3:].isnumeric())
 
 
 @app.route('/login', methods=['GET', 'POST'])

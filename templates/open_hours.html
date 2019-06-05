@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Open Hours</title>
+    <link href="{{ url_for('main_theme') }}" rel="stylesheet">
+    <script>
+        function validate() {
+            const timesTable = document.getElementById("timesTable");
+            for (const row of timesTable.children) {
+                if (("TR" === row.tagName) && (!validateRow(row))) {
+                    alert("Closing times must be later than opening times!");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function validateRow(row) {
+            const open = row.children[1].children[0].value;
+            const close = row.children[2].children[0].value;
+            return close >= open; // string comparison is sufficient.
+        }
+    </script>
+</head>
+<body>
+{% include "header.html" %}
+
+<h1>Open Hours</h1>
+
+{% set week = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') %}
+
+<form action="{{ url_for('update_open') }}" method="post" onsubmit="return validate();">
+    <table>
+        <thead>
+        <tr>
+            <td></td>
+            <th>Open</th>
+            <th>Close</th>
+        </tr>
+        </thead>
+        <tbody id="timesTable">
+        {% for num, opening, closing in time_table %}
+            {% set day=week[num] %}
+            <tr>
+                <td>{{ day }}</td>
+                <td><input type="time" name="open-{{ num }}" required value="{{ opening if opening }}"></td>
+                <td><input type="time" name="close-{{ num }}" required value="{{ closing if closing }}"></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit">Update</button>
+</form>
+
+</body>
+</html>

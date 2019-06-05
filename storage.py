@@ -244,6 +244,28 @@ class Ignored(Storage):
         self._remove('number', number)
 
 
+class OpenHours(Storage):
+    TABLE_NAME = 'open_hours'
+    TABLE_SCHEMA = 'weekday NUMBER NOT NULL UNIQUE, opening TIME NOT NULL, closing TIME NOT NULL'
+
+    def __iter__(self):
+        return self._iterate_columns('weekday', 'opening', 'closing', order_by='ORDER BY weekday ASC')
+
+    def get(self, day):
+        cursor = self.connection().cursor()
+        resp = cursor.execute('SELECT opening, closing FROM {} WHERE weekday=?'.format(self.TABLE_NAME),
+                              (day,)).fetchone()
+        return resp or None, None
+
+    def set(self, opens, closes):
+        conn = self.connection()
+        cursor = conn.cursor()
+        for day in range(7):
+            cursor.execute('REPLACE INTO {} (weekday, opening, closing) VALUES (?, ?, ?)'.format(self.TABLE_NAME),
+                           (day, opens[day], closes[day]))
+        conn.commit()
+
+
 class Secrets(Storage):
     TABLE_NAME = 'secrets'
     TABLE_SCHEMA = 'name TEXT PRIMARY KEY NOT NULL, value TEXT'
