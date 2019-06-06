@@ -1,5 +1,5 @@
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from os.path import splitext
 
@@ -17,6 +17,8 @@ COOKIES = Cookies()
 CODED = CodedMessages()
 CONFIG = Config()
 OPEN_HOURS = OpenHours()
+
+PACIFIC_TIME = timezone(timedelta(hours=-7))
 
 
 def authenticated(route):
@@ -100,7 +102,7 @@ def voice():
 
 
 def is_open():
-    now = datetime.now()
+    now = datetime.now(tz=PACIFIC_TIME)
     open_, close = OPEN_HOURS.get(now.weekday())
     if None in (open_, close):
         return True
