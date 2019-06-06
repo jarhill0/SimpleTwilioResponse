@@ -255,7 +255,7 @@ class OpenHours(Storage):
         cursor = self.connection().cursor()
         resp = cursor.execute('SELECT opening, closing FROM {} WHERE weekday=?'.format(self.TABLE_NAME),
                               (day,)).fetchone()
-        return resp or None, None
+        return resp or (None, None)
 
     def set(self, opens, closes):
         conn = self.connection()
