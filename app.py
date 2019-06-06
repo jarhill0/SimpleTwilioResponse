@@ -97,7 +97,7 @@ def voice():
             if CODED.get_response_type('closed'):
                 resp.say(CODED.get_response_text('closed'))
             else:
-                resp.play(url_for('answer_audio'), code='closed')
+                resp.play(url_for('answer_audio', code='closed'))
     return str(resp)
 
 
