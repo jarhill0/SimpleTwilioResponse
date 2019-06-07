@@ -193,6 +193,39 @@ class Config(Storage):
             return default
 
 
+class Contacts(Storage):
+    TABLE_NAME = 'contacts'
+    TABLE_SCHEMA = 'number TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL'
+
+    def __delitem__(self, number):
+        connection = self.connection()
+        cursor = connection.cursor()
+        cursor.execute('DELETE FROM {} WHERE number=?'.format(self.TABLE_NAME), (number,))
+        connection.commit()
+
+    def __getitem__(self, number):
+        cursor = self.connection().cursor()
+        result = cursor.execute('SELECT name FROM {} WHERE number=?'.format(self.TABLE_NAME), (number,)).fetchone()
+        if result is None:
+            raise KeyError('No known contact with number {!r}.'.format(number))
+        return result[0]
+
+    def __iter__(self):
+        return self._iterate_columns('number', 'name')
+
+    def __setitem__(self, number, name):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('REPLACE INTO {} VALUES (?, ?)'.format(self.TABLE_NAME), (number, name))
+        conn.commit()
+
+    def get(self, number, default=None):
+        try:
+            return self[number]
+        except KeyError:
+            return default
+
+
 class Cookies(Storage):
     TABLE_NAME = 'cookies'
     TABLE_SCHEMA = 'id INTEGER PRIMARY KEY NOT NULL, cookie TEXT NOT NULL, expiration DATETIME NOT NULL'

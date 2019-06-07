@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contacts</title>
+    <link rel="stylesheet" href="{{ url_for("main_theme") }}">
+</head>
+<body>
+{% include 'header.html' %}
+<h1>Contacts</h1>
+<ul>
+    {% for number, name in contacts %}
+        <li>{{ name }}: {{ number }}
+            <form method="post" action="{{ url_for('delete_contact') }}">
+                <input type="text" name="number" hidden value="{{ number }}">
+                <button type="submit">Delete</button>
+            </form>
+        </li>
+    {% endfor %}
+</ul>
+
+<h3>Add contact</h3>
+<form method="post" action="{{ url_for('add_contact') }}">
+    <label>
+        Name
+        <input type="text" name="name" required>
+    </label>
+    <label>
+        Number
+        <input type="text" name="number" required>
+    </label>
+    <button type="submit">Add</button>
+</form>
+</body>
+</html>

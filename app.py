@@ -6,7 +6,7 @@ from os.path import splitext
 from flask import Flask, Response, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from storage import CallLog, CodedMessages, Config, Cookies, Ignored, OpenHours, Secrets
+from storage import CallLog, CodedMessages, Config, Contacts, Cookies, Ignored, OpenHours, Secrets
 
 app = Flask(__name__)
 
@@ -17,6 +17,7 @@ COOKIES = Cookies()
 CODED = CodedMessages()
 CONFIG = Config()
 OPEN_HOURS = OpenHours()
+CONTACTS = Contacts()
 
 PACIFIC_TIME = timezone(timedelta(hours=-7))
 
@@ -57,7 +58,8 @@ def analytics():
     code_counter = sorted(tuple(Counter(row[2] for row in table if row[2] is not None).items()),
                           key=lambda tup: (tup[1], tup[0]), reverse=True)
     return render_template('analytics.html', table=table, uniques=uniques, ignored=IGNORED, error=error,
-                           success=success, code_counter=code_counter, unique_codes=count_unique_code_usages(table))
+                           success=success, code_counter=code_counter, unique_codes=count_unique_code_usages(table),
+                           contacts=CONTACTS)
 
 
 def count_unique_code_usages(table):
@@ -75,6 +77,40 @@ def log_request():
 def log_digits():
     if request.method == 'POST' and {'Digits', 'CallSid'}.issubset(request.values):
         CALL_LOG.set_code(request.values['CallSid'], request.values['Digits'])
+
+
+@app.route('/contacts', methods=['GET'])
+@authenticated
+def contacts():
+    return render_template('contacts.html', contacts=CONTACTS)
+
+
+@app.route('/contacts/delete', methods=['POST'])
+@authenticated
+def delete_contact():
+    number = request.values.get('number')
+    if not number:
+        return 'No number!', 400
+    try:
+        del CONTACTS[number]
+    except KeyError:
+        return 'Unknown number!', 400
+    return redirect(url_for('contacts'))
+
+
+@app.route('/contacts/add', methods=['POST'])
+@authenticated
+def add_contact():
+    number = request.values.get('number')
+    name = request.values.get('name')
+    if not number or not name:
+        return 'Name and number are required!', 400
+    number = ''.join(s for s in number if s.isnumeric())
+    if len(number) == 10:
+        number = '1' + number
+    number = '+' + number
+    CONTACTS[number] = name
+    return redirect(url_for('contacts'))
 
 
 @app.route('/answer', methods=['GET', 'POST'])
