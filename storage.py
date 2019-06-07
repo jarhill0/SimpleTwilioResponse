@@ -196,6 +196,7 @@ class Config(Storage):
 class Cookies(Storage):
     TABLE_NAME = 'cookies'
     TABLE_SCHEMA = 'id INTEGER PRIMARY KEY NOT NULL, cookie TEXT NOT NULL, expiration DATETIME NOT NULL'
+    VALID_LENGTH = timedelta(days=7)
 
     def check(self, cookie):
         """Check if a cookie is valid."""
@@ -206,7 +207,7 @@ class Cookies(Storage):
     def new(self):
         """Store a new cookie and return it."""
         val = token_hex(30)
-        exp_date = int((datetime.now() + timedelta(days=1)).timestamp())
+        exp_date = int((datetime.now() + self.VALID_LENGTH).timestamp())
         conn = self.connection()
         conn.cursor().execute('INSERT INTO {} VALUES (NULL, ?, ?)'.format(self.TABLE_NAME), (val, exp_date))
         conn.commit()
