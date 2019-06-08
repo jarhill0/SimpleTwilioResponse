@@ -130,10 +130,17 @@ def voice():
         resp.redirect(url_for('answer_digits'))
     else:
         if 'closed' in CODED:
-            if CODED.get_response_type('closed'):
-                resp.say(CODED.get_response_text('closed'))
+            do_prompt = 'prompt' in CODED
+            if do_prompt:
+                gather = Gather(action=url_for('answer_digits'))
             else:
-                resp.play(url_for('answer_audio', code='closed'))
+                gather = resp
+            if CODED.get_response_type('closed'):
+                gather.say(CODED.get_response_text('closed'))
+            else:
+                gather.play(url_for('answer_audio', code='closed'))
+            if do_prompt:
+                resp.append(gather)
     return str(resp)
 
 
