@@ -73,9 +73,9 @@ def count_unique_code_usages(table):
 
 def log_request():
     if request.method == 'POST' and {'Caller', 'CallSid'}.issubset(request.values):
-        CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'), request.values['CallSid'])
         if not CALL_LOG.has_called(request.values['Caller']):
             send_welcome_message(request.values['Caller'])
+        CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'), request.values['CallSid'])
 
 
 def send_welcome_message(phone_num):
