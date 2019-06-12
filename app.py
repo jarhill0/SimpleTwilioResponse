@@ -1,3 +1,4 @@
+import traceback
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -90,7 +91,8 @@ def send_welcome_message(phone_num):
         requests.post(url, data={'phone_num': phone_num,
                                  'exchange': exchange,
                                  'password': password})
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
+        traceback.print_exc()
         return
 
 
