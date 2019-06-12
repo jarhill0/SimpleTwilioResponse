@@ -79,6 +79,11 @@ class CallLog(Storage):
                               'WHERE number not in (SELECT number FROM {ig_tab})'.format(
                                   ig_tab=Ignored.TABLE_NAME)).fetchall()
 
+    def has_called(self, number):
+        cursor = self.connection().cursor()
+        return bool(cursor.execute('SELECT number FROM {tab} WHERE number=?'.format(tab=self.TABLE_NAME),
+                                   (number,)).fetchone())
+
     def set_code(self, call_sid, code):
         conn = self.connection()
         conn.cursor().execute('UPDATE {} SET code=? WHERE call_sid=?'.format(self.TABLE_NAME), (code, call_sid))

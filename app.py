@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from os.path import splitext
 
+import requests
 from flask import Flask, Response, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
@@ -72,6 +73,48 @@ def count_unique_code_usages(table):
 def log_request():
     if request.method == 'POST' and {'Caller', 'CallSid'}.issubset(request.values):
         CALL_LOG.add(request.values['Caller'], datetime.now().strftime('%c'), request.values['CallSid'])
+        if not CALL_LOG.has_called(request.values['Caller']):
+            send_welcome_message(request.values['Caller'])
+
+
+def send_welcome_message(phone_num):
+    try:
+        url = SECRETS['welcome_url']
+        exchange = SECRETS['welcome_exchange_name']
+        password = SECRETS['welcome_system_password']
+    except KeyError:
+        return
+    if not all((url, exchange, password)):
+        return
+    try:
+        requests.post(url, data={'phone_num': phone_num,
+                                 'exchange': exchange,
+                                 'password': password})
+    except requests.exceptions.RequestException:
+        return
+
+
+@app.route('/configure_welcome', methods=['GET'])
+@authenticated
+def configure_welcome():
+    welcome_data = {'url': SECRETS.get('welcome_url'),
+                    'exchange': SECRETS.get('welcome_exchange_name'),
+                    'password': SECRETS.get('welcome_system_password')}
+    return render_template('configure_welcome.html', welcome_data=welcome_data)
+
+
+@app.route('/configure_welcome', methods=['POST'])
+@authenticated
+def configure_welcome_post():
+    url = request.values.get('url')
+    exchange = request.values.get('exchange')
+    password = request.values.get('password')
+    if None in (url, exchange, password):
+        return 'url, exchange, and password are required.', 400
+    SECRETS['welcome_url'] = url
+    SECRETS['welcome_exchange_name'] = exchange
+    SECRETS['welcome_system_password'] = password
+    return redirect(url_for('configure_welcome'))
 
 
 def log_digits():

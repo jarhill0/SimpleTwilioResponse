@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Configure Welcome</title>
+    <link rel="stylesheet" href="{{ url_for("main_theme") }}">
+</head>
+<body>
+{% include 'header.html' %}
+<h1>Configure Welcome</h1>
+<form action="{{ url_for('configure_welcome_post') }}" method="post">
+    <label>Welcome URL <input type="text" name="url" placeholder="https://example.com/welcome"
+                              value="{{ welcome_data['url'] if welcome_data['url'] else '' }}"></label>
+    <br>
+    <label>Exchange name <input type="text" name="exchange" placeholder="welcome"
+                                value="{{ welcome_data['exchange'] if welcome_data['exchange'] else '' }}"></label>
+    <br>
+    <label>System password <input type="password" name="password"
+                                  value="{{ welcome_data['password'] if welcome_data['password'] else '' }}"></label>
+    <br>
+    <button>Update</button>
+</form>
+</body>
+</html>
