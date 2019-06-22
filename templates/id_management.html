@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IDs</title>
+    <link href="{{ url_for('main_theme') }}" rel="stylesheet">
+</head>
+<body>
+{% include 'header.html' %}
+
+<h1>IDs</h1>
+
+<form action="{{ url_for('set_id_regex') }}" method="post">
+    <label>Regular expression
+        <br>
+        <input type="text" name="regex" value="{{ id_regex if id_regex }}">
+        <br>
+        (leave blank to disable)
+    </label>
+    <br>
+    <button>Update</button>
+</form>
+
+<h3>Registered IDs</h3>
+{% for id_num in id_numbers %}
+    <li>{{ id_num }}</li>
+{% endfor %}
+</body>
+</html>

@@ -36,6 +36,11 @@
 <p>To edit a code-specific message, enter a code in the box for codes.
     If no code is entered, you will modify the default message.</p>
 <p>Enter "<code>closed</code>" to modify the message that is played outside of business hours.</p>
+<p>Enter "<code>id-prompt</code>" to modify the message that is played when an ID should be entered.</p>
+<p>Enter "<code>unknown-id</code>" to modify the message that is played when an unknown <i>existing</i> ID has been
+    entered.</p>
+<p>Enter "<code>good-id</code>" to modify the message that is played when a valid <i>new</i> ID has been entered.</p>
+<p>Enter "<code>bad-id</code>" to modify the message that is played when an invalid <i>new</i> ID has been entered.</p>
 
 
 <form action="" method="post" enctype="multipart/form-data">
@@ -54,6 +59,13 @@
                 <input type="radio" id="audio-radio" name="type" value="audio"
                        onclick="updateTabs()">
                 <label for="audio-radio">Audio</label>
+            </td>
+        </tr>
+        <tr>
+            <td>Options:</td>
+            <td>
+                <label><input type="checkbox" name="require-id">Require ID</label>
+                <label><input type="checkbox" name="register-id">Register new ID</label>
             </td>
         </tr>
         <tr id="textRow">

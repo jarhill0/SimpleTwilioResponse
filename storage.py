@@ -57,7 +57,7 @@ class Storage:
 class CallLog(Storage):
     TABLE_NAME = 'calls'
     TABLE_SCHEMA = ('id INTEGER PRIMARY KEY NOT NULL, number TEXT NOT NULL, timestamp DATETIME NOT NULL, '
-                    'call_sid TEXT, code TEXT')
+                    'call_sid TEXT, code TEXT, id_number TEXT')
 
     def __iter__(self):
         return self._iterate_columns('number', 'timestamp', 'code', order_by='ORDER BY timestamp ASC')
@@ -75,7 +75,7 @@ class CallLog(Storage):
         Brittle, hardcoded method.
         """
         cursor = self.connection().cursor()
-        return cursor.execute('SELECT number, timestamp, code FROM {tab} '.format(tab=self.TABLE_NAME) +
+        return cursor.execute('SELECT number, timestamp, code, id_number FROM {tab} '.format(tab=self.TABLE_NAME) +
                               'WHERE number not in (SELECT number FROM {ig_tab})'.format(
                                   ig_tab=Ignored.TABLE_NAME)).fetchall()
 
@@ -89,11 +89,18 @@ class CallLog(Storage):
         conn.cursor().execute('UPDATE {} SET code=? WHERE call_sid=?'.format(self.TABLE_NAME), (code, call_sid))
         conn.commit()
 
+    def set_idnum(self, call_sid, id_number):
+        conn = self.connection()
+        conn.cursor().execute('UPDATE {} SET id_number=? WHERE call_sid=?'.format(self.TABLE_NAME),
+                              (id_number, call_sid))
+        conn.commit()
+
 
 class CodedMessages(Storage):
     TABLE_NAME = 'coded_messages'
     TABLE_SCHEMA = ('id INTEGER PRIMARY KEY NOT NULL, code TEXT NOT NULL UNIQUE, '
-                    'use_text TINYINT NOT NULL, text_ TEXT, audio BLOB, file_name TEXT')
+                    'use_text TINYINT NOT NULL, text_ TEXT, audio BLOB, file_name TEXT, '
+                    'options INTEGER')
 
     def __contains__(self, item):
         return self._contains('code', item)
@@ -106,6 +113,16 @@ class CodedMessages(Storage):
         cursor = conn.cursor()
         cursor.execute('DELETE FROM {} WHERE code=?'.format(self.TABLE_NAME), (code,))
         conn.commit()
+
+    def get_options(self, code):
+        cursor = self.connection().cursor()
+        row = cursor.execute('SELECT options FROM {} WHERE code=?'.format(self.TABLE_NAME), (str(code),)).fetchone()
+        if not row:
+            return 0
+        options = row[0]
+        if options is None:
+            return 0
+        return options
 
     def get_response_audio(self, code):
         """Returns response audio."""
@@ -164,6 +181,12 @@ class CodedMessages(Storage):
         cursor = conn.cursor()
         cursor.execute('REPLACE INTO {} (code, use_text, audio, file_name) VALUES (?, 0, ?, ?)'.format(self.TABLE_NAME),
                        (code, audio, file_name))
+        conn.commit()
+
+    def set_options(self, code, options):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE {} SET options=? WHERE code=?'.format(self.TABLE_NAME), (options, code))
         conn.commit()
 
     def set_text(self, code, text):
@@ -263,6 +286,26 @@ class Cookies(Storage):
         self._remove('cookie', cookie)
 
 
+class IdNumbers(Storage):
+    TABLE_NAME = 'id_numbers'
+    TABLE_SCHEMA = 'id_number TEXT PRIMARY KEY NOT NULL'
+
+    def __contains__(self, item):
+        return self._contains('id_number', item)
+
+    def __iter__(self):
+        return self._iterate_column('id_number')
+
+    def add(self, id_number):
+        """Perform a set-style addition"""
+        conn = self.connection()
+        conn.cursor().execute('INSERT OR IGNORE INTO {} VALUES (?)'.format(self.TABLE_NAME), (id_number,))
+        conn.commit()
+
+    def remove(self, number):
+        self._remove('id_number', number)
+
+
 class Ignored(Storage):
     TABLE_NAME = 'ignored'
     TABLE_SCHEMA = 'number TEXT PRIMARY KEY NOT NULL'
@@ -308,6 +351,12 @@ class OpenHours(Storage):
 class Secrets(Storage):
     TABLE_NAME = 'secrets'
     TABLE_SCHEMA = 'name TEXT PRIMARY KEY NOT NULL, value TEXT'
+
+    def __delitem__(self, key):
+        conn = self.connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM {} WHERE name=?'.format(self.TABLE_NAME), (key,))
+        conn.commit()
 
     def __getitem__(self, item):
         cursor = self.connection().cursor()

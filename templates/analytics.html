@@ -40,7 +40,7 @@
             <th class="bordered">Time of call</th>
             <th class="bordered">Code entered</th>
         </tr>
-        {% for number, call_time, code in table %}
+        {% for number, call_time, code, id_num in table %}
             <tr class="bordered">
                 <td class="bordered">
                     {% set name = contacts.get(number) %}
@@ -51,7 +51,7 @@
                     {% endif %}
                 </td>
                 <td class="bordered">{{ call_time }}</td>
-                <td class="bordered">{{ code }}</td>
+                <td class="bordered">{{ code }}{{ (' (ID: {})'.format(id_num)) if id_num }}</td>
             </tr>
         {% endfor %}
     </table>

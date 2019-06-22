@@ -1,3 +1,4 @@
+import re
 import traceback
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
@@ -8,7 +9,7 @@ import requests
 from flask import Flask, Response, make_response, redirect, render_template, request, url_for
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
-from storage import CallLog, CodedMessages, Config, Contacts, Cookies, Ignored, OpenHours, Secrets
+from storage import CallLog, CodedMessages, Config, Contacts, Cookies, IdNumbers, Ignored, OpenHours, Secrets
 
 app = Flask(__name__)
 
@@ -20,6 +21,7 @@ CODED = CodedMessages()
 CONFIG = Config()
 OPEN_HOURS = OpenHours()
 CONTACTS = Contacts()
+ID_NUMBERS = IdNumbers()
 
 PACIFIC_TIME = timezone(timedelta(hours=-7))
 
@@ -66,7 +68,7 @@ def analytics():
 
 def count_unique_code_usages(table):
     temp = defaultdict(set)
-    for number, _, code in table:
+    for number, _, code, __ in table:
         temp[code].add(number)
     return {key: len(value) for key, value in temp.items()}
 
@@ -124,6 +126,11 @@ def log_digits():
         CALL_LOG.set_code(request.values['CallSid'], request.values['Digits'])
 
 
+def log_id():
+    if request.method == 'POST' and {'Digits', 'CallSid'}.issubset(request.values):
+        CALL_LOG.set_idnum(request.values['CallSid'], request.values['Digits'])
+
+
 @app.route('/contacts', methods=['GET'])
 @authenticated
 def contacts():
@@ -167,10 +174,7 @@ def voice():
     if is_open():
         if 'prompt' in CODED:
             gather = Gather(action=url_for('answer_digits'))
-            if CODED.get_response_type('prompt'):
-                gather.say(CODED.get_response_text('prompt'))
-            else:
-                gather.play(url_for('answer_audio', code='prompt'))
+            add_message(gather, 'prompt')
             resp.append(gather)
         resp.redirect(url_for('answer_digits'))
     else:
@@ -178,14 +182,10 @@ def voice():
             do_prompt = 'prompt' in CODED
             if do_prompt:
                 gather = Gather(action=url_for('answer_digits'))
+                resp.append(gather)
             else:
                 gather = resp
-            if CODED.get_response_type('closed'):
-                gather.say(CODED.get_response_text('closed'))
-            else:
-                gather.play(url_for('answer_audio', code='closed'))
-            if do_prompt:
-                resp.append(gather)
+            add_message(gather, 'closed')
     return str(resp)
 
 
@@ -214,12 +214,60 @@ def answer_digits():
     resp = VoiceResponse()
 
     digits = request.values.get('Digits', '')
-    message_is_text = CODED.get_response_type(digits)
-    if message_is_text:
-        resp.say(CODED.get_response_text(digits))
+
+    message_options = get_options(CODED.get_options(digits))
+    require_id = message_options.get('require_id')
+    register_id = message_options.get('register_id')
+    if require_id or register_id:
+        gather = Gather(
+            action=url_for('answer_id', original_digits=digits, require_id=require_id, register_id=register_id))
+        add_message(gather, 'id-prompt')
+        resp.append(gather)
     else:
-        resp.play(url_for('answer_audio', code=digits))
+        add_message(resp, digits)
     return str(resp)
+
+
+@app.route('/answer/id', methods=['GET', 'POST'])
+def answer_id():
+    """Respond to a call by prompting for an ID number."""
+    log_id()
+
+    resp = VoiceResponse()
+    id_num = request.values.get('Digits', '')
+    digits = request.values.get('original_digits', '')
+    require_id = request.values.get('require_id', False)
+    register_id = request.values.get('register_id', False)
+
+    if register_id:
+        if check_new_id(id_num):
+            ID_NUMBERS.add(id_num)
+            add_message(resp, 'good-id')
+            add_message(resp, digits)
+        else:
+            add_message(resp, 'bad-id')
+    elif require_id:
+        if id_num in ID_NUMBERS:
+            add_message(resp, digits)  # this isn't secure because audio can be accessed directly at URL by anyone.
+        else:
+            add_message(resp, 'unknown-id')
+    return str(resp)
+
+
+def check_new_id(id_num):
+    id_regex = SECRETS.get('id_regex')
+    if id_regex is None:
+        return True
+    return re.match(id_regex, id_num)
+
+
+def add_message(thing, code):
+    """Add the message from code to thing."""
+    message_is_text = CODED.get_response_type(code)
+    if message_is_text:
+        thing.say(CODED.get_response_text(code))
+    else:
+        thing.play(url_for('answer_audio', code=code))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -239,15 +287,41 @@ def edit_message():
                     error = 'Invalid file type. Only MP3 is supported.'
                 else:
                     contents = file.read()
-                    CODED.set_audio(request.values.get('code', ''), contents, file.filename)
+                    code = request.values.get('code', '')
+                    CODED.set_audio(code, contents, file.filename)
                     file.close()
+                    add_options(code)
                     success = 'The new audio message has been set.'
         elif request.values.get('type') == 'text':
-            CODED.set_text(request.values.get('code', ''), request.values['mess'])
+            code = request.values.get('code', '')
+            CODED.set_text(code, request.values['mess'])
+            add_options(code)
             success = 'The new text message has been set.'
         else:
             error = 'Unknown response type {!r}.'.format(request.values.get('type'))
     return render_template('editor.html', coded_messages=CODED, success=success, error=error)
+
+
+def add_options(code):
+    require_id = request.values.get('require-id', 'off') == 'on'
+    register_id = request.values.get('register-id', 'off') == 'on'
+    CODED.set_options(code, set_options(require_id=require_id, register_id=register_id))
+
+
+def set_options(*, require_id=False, register_id=False):
+    """Convert boolean options to a bitmasked integer."""
+    opts = 0
+    opts |= require_id
+    opts |= (register_id << 1)
+    return opts
+
+
+def get_options(num):
+    """Convert bitmasked int options into a dict."""
+    return {
+        'require_id': bool(num & 1),
+        'register_id': bool(num & (1 << 1)),
+    }
 
 
 @app.route('/prompt', methods=['GET', 'POST'])
@@ -331,6 +405,23 @@ def validate_time(t):
             t[2] == ':' and
             t[:2].isnumeric() and
             t[3:].isnumeric())
+
+
+@app.route('/ids', methods=['GET'])
+@authenticated
+def id_management():
+    return render_template('id_management.html', id_numbers=iter(ID_NUMBERS), id_regex=SECRETS.get('id_regex'))
+
+
+@app.route('/ids/set_regex', methods=['POST'])
+@authenticated
+def set_id_regex():
+    regex = request.values.get('regex')
+    if regex:
+        SECRETS['id_regex'] = regex
+    else:
+        del SECRETS['id_regex']
+    return redirect(url_for('id_management'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
