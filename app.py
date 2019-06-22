@@ -236,8 +236,8 @@ def answer_id():
     resp = VoiceResponse()
     id_num = request.values.get('Digits', '')
     digits = request.values.get('original_digits', '')
-    require_id = request.values.get('require_id', False)
-    register_id = request.values.get('register_id', False)
+    require_id = request.values.get('require_id', '') == 'True'
+    register_id = request.values.get('register_id', '') == 'True'
 
     if register_id:
         if check_new_id(id_num):
