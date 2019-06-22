@@ -97,7 +97,8 @@
         {% if code != 'prompt' %} {# HACKY #}
             <li>
                 {% if code %}
-                    <b>{{ code }}</b> (<a href="{{ url_for('delete_code_response', code=code) }}">delete</a>):
+                    <b>{{ code }}</b>[{{ coded_messages.get_options(code) }}]
+                    (<a href="{{ url_for('delete_code_response', code=code) }}">delete</a>):
                 {% else %}
                     <i>default</i>:
                 {% endif %}
